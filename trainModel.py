@@ -14,7 +14,7 @@ if platform.node()=="kubuntu20nico2":
 
 modelName = None
 architecture = "to be named"
-max_epochs = 3
+max_epochs = 20
 batch_fraction = 1/2
 regularization_factor =  0.5
 learning_rate = 0.000001

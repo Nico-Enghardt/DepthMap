@@ -6,6 +6,8 @@ def multiDepthLoss(groundTruth,depthsPredicted):
     
     depthsPredicted = tf.squeeze(depthsPredicted)
     
+    valueMap = tf.where(tf.greater(pmi))
+    
     print(depthsPredicted.shape)
     print(groundTruth.shape)
     
@@ -14,6 +16,8 @@ def multiDepthLoss(groundTruth,depthsPredicted):
     for predSize in range(depthsPredicted.shape[0]):
         
         abs = tf.abs((groundTruth - depthsPredicted[predSize,:,:,:]))
+        
+        abs = tf.reduce_all()
         
         tf.reduce_mean(abs,axis=0)
         abs = tf.reduce_mean(abs,axis=0)
