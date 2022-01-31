@@ -17,7 +17,7 @@ def readDatasetTraining(path,shuffleMode="shuffleBatches",percentageDataset=0.8,
 def readFromFolder(path,format):
     files = os.listdir(path);
     
-    files = files[:500]
+    files = files[:30]
         
     list = np.empty(format)
 

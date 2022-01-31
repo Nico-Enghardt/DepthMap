@@ -14,7 +14,7 @@ def multiDepthLoss(groundTruth,depthsPredicted):
         
         abs = tf.abs((groundTruth - depthsPredicted[predSize,:,:,:]))
         
-        abs = tf.reduce_all()
+        #abs = tf.reduce_all()
         
         tf.reduce_mean(abs,axis=0)
         abs = tf.reduce_mean(abs,axis=0)
