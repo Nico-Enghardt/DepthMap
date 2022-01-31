@@ -6,10 +6,7 @@ def multiDepthLoss(groundTruth,depthsPredicted):
     
     depthsPredicted = tf.squeeze(depthsPredicted)
     
-    valueMap = tf.where(tf.greater(pmi))
-    
-    print(depthsPredicted.shape)
-    print(groundTruth.shape)
+    #valueMap = tf.where(tf.greater(pmi))
     
     loss = 0
     
