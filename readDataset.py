@@ -1,8 +1,5 @@
 import os
 import numpy as np
-import skvideo.io
-import random
-import time
 import cv2
 
 def readDatasetTraining(path,shuffleMode="shuffleBatches",percentageDataset=0.8,onlyFile=False):
@@ -20,7 +17,7 @@ def readDatasetTraining(path,shuffleMode="shuffleBatches",percentageDataset=0.8,
 def readFromFolder(path,format):
     files = os.listdir(path);
     
-    files = files[:20]
+    files = files[:]
         
     list = np.empty(format)
 
