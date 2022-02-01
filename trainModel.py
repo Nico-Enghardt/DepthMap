@@ -14,13 +14,13 @@ if platform.node()=="kubuntu20nico2":
 
 modelName = None
 architecture = "to be named"
-max_epochs = 20
+max_epochs = 50
 batch_fraction = 1/2
 regularization_factor =  0.5
 learning_rate = 0.000001
 percentageDataset = 1;
 
-#run = wandb.init(job_type="model-training", config={"epochs":0,"learning_rate":learning_rate,"batch_fraction":batch_fraction,"regularization":regularization_factor,"architecture":architecture})
+run = wandb.init(job_type="model-training", config={"learning_rate":learning_rate,"batch_fraction":batch_fraction,"regularization":regularization_factor,"architecture":architecture})
 
 # Load Model --------------------------------------------------------------------------------------------
 
@@ -48,49 +48,28 @@ trainingPictures,trainingTrueDepth,testPictures,testTrueDepth = readDatasetTrain
 # Fit model to training data --------------------------------------------------------------------------------------------
 
 e = 0
-batch_size = int(batch_fraction*trainingPictures.shape[0])
-#run.config["batch-size"] = batch_size;
+batchSize = int(batch_fraction*trainingPictures.shape[0])
+print(batchSize)
+run.config["batchSize"] = batchSize;
 
 while e < max_epochs:
     print("Epoch: "+ str(e))
-    model.fit(x=trainingPictures,y=trainingTrueDepth,batch_size=batch_size,verbose=1)
+    model.fit(x=trainingPictures,y=trainingTrueDepth,batch_size=batchSize,verbose=1)
 
-    # i = 0
-    # metrics = []
+    loss = model.history.history["loss"][0]
+    wandb.log({"loss":loss})
 
-    # while i < len(trainingPictures):
-    #     range = [i,i+batch_size]
-        
-    #     if i+batch_size > len(trainingPictures):
-    #         range[1]=len(trainingPictures)
-    #     currPictures = np.array(trainingPictures[range[0]:range[1]])
-    #     currLabels = np.array(trainingLabels[range[0]:range[1]])
-
-    #     i=i+batch_size
-    #     model.fit(x=currPictures,y=currLabels,verbose=1)
-        
-    #     currMetrics = model.history.history
-
-    #     metrics.append([currMetrics["loss"][0],currMetrics["loss3D"][0],currMetrics["heightError"][0],currMetrics["planeError"][0]])
-
-    # metrics = np.average(metrics,axis=0)
-    # wandb.log({"loss":metrics[0],"acc3D":metrics[1],"heightError":metrics[2],"planeError":metrics[3]})
-
-    # if (e % 5 == 0):
-    #     metrics = model.evaluate(x=testPictures,y=testLabels,batch_size=batch_size,verbose=2)
-    #     wandb.log({"testLoss":metrics[0],"testAcc3D":metrics[1],"testHeightError":metrics[2],"testPlaneError":metrics[3]},commit=False)
+    #if (e % 5 == 0):
+    #     metrics = model.evaluate(x=testPictures,y=testTrueDepth,batch_size=batchSize,verbose=2)
+    #     wandb.log({"testLoss":metrics[0]},commit=False)
         
     e = e+1
     
-
-
-model.summary()
-
 # Test model's predictions
-predictions = model.predict(testPictures[1,:,:,:])
-print("\n Predictions:")
-print(predictions)
-print("\n")
+# predictions = model.predict(testPictures[1,:,:,:])
+# print("\n Predictions:")
+# print(predictions)
+# print("\n")
 
 # Save Model online and finish run –------------------------------------------------------------------------------------
 
@@ -101,7 +80,7 @@ model.save("artifacts/"+modelName)
 modelArtifact = wandb.Artifact(modelName,type="model")
 modelArtifact.add_dir("artifacts/"+modelName)
 
-#run.log_artifact(modelArtifact)
+run.log_artifact(modelArtifact)
 
-#wandb.finish()
+wandb.finish()
 

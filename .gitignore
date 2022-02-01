@@ -3,3 +3,5 @@
 /DepthNetwork-Architecture.svg
 /Output.png
 /__pycache__
+/wandb
+/artifacts

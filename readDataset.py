@@ -17,7 +17,7 @@ def readDatasetTraining(path,shuffleMode="shuffleBatches",percentageDataset=0.8,
 def readFromFolder(path,format):
     files = os.listdir(path);
     
-    files = files[:100]
+    files = files[:400]
         
     list = np.empty(format)
 
@@ -28,7 +28,6 @@ def readFromFolder(path,format):
             list = np.concatenate((list,np.expand_dims(cv2.imread(pathToFile)[:,368:848,0],axis=0)))
         else:
             list = np.concatenate((list,np.expand_dims(cv2.imread(pathToFile)[:,368:848,:],axis=0)))
-
 
     #if shuffling: random.shuffle(pictures)
     
