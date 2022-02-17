@@ -17,7 +17,7 @@ if platform.node()=="kubuntu20nico2":
 modelName = None
 architecture = "MayerN"
 max_epochs = 50
-batch_fraction = 1
+batch_fraction = 0.26
 learning_rate = 0.000001
 
 if len(sys.argv)>1:
@@ -54,17 +54,17 @@ run.config["testExamples"] = testPictures.shape[0]
 
 # Fit model to training data --------------------------------------------------------------------------------------------
 
-e = 0
-#batchSize = int(batch_fraction*trainingPictures.shape[0])
-#print(batchSize)
-#run.config["batchSize"] = batchSize;
 
-while e < max_epochs:
+batchSize = int(batch_fraction*trainingPictures.shape[0]*0.8)
+print(f"Using batchsize: {batchSize}")
+run.config["batchSize"] = batchSize;
+
+for e in range(max_epochs):
     print("Epoch: "+ str(e))
     
-    model.fit(trainingPictures,trainingTrueDepth)
-        
-    e = e+1
+    model.fit(trainingPictures,trainingTrueDepth,batchSize)
+    print("Loss: " + str(model.history))
+    wandb.log({"loss":model.history})
     
 #Test model's predictions
 predictions = model.predict(testPictures[1,:,:,:])

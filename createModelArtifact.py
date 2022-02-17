@@ -2,6 +2,7 @@ import os
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 import math
+from tqdm import tqdm
 
 class depthModel(tf.keras.Model):
     def __init__(self):
@@ -65,7 +66,6 @@ class depthModel(tf.keras.Model):
             predictions.append(predictor(x))
             
         predictions = self.scalePredictions(predictions)
-        print(predictions.shape)
         
         return predictions
         
@@ -100,21 +100,33 @@ class depthModel(tf.keras.Model):
 
         return loss
 
-    def fit(self,x,y,epochs=1):
-        for epoch in range(epochs):
-            with tf.GradientTape() as tape:
-                
-                predictions = self.call(x)
-                
-                loss = self.multiDepthLoss(y,predictions)
-                print(loss)
-                
-                grads = tape.gradient(loss,self.trainable_weights)
-                self.optimizer.apply_gradients(zip(grads,self.trainable_weights))
-                
-
-            
+    def fit(self,x,y,batchSize=None,epochs=1):
         
+        if not batchSize:
+                batchSize = len(x)
+        
+        for epoch in range(epochs):
+            
+            i = 0
+            while i < len(x):
+                area = [i,i+batchSize]
+                if i+batchSize > len(x):
+                    area[1]=len(x)
+                i += batchSize
+                    
+                currPictures = x[area[0]:area[1]]
+                currDepth = y[area[0]:area[1]]
+            
+                with tf.GradientTape() as tape:
+                
+                    predictions = self.call(currPictures)
+                
+                    loss = self.multiDepthLoss(currDepth,predictions)
+                    self.history = loss.numpy()
+                    
+                    grads = tape.gradient(loss,self.trainable_weights)
+                    self.optimizer.apply_gradients(zip(grads,self.trainable_weights))              
+
 
 def createModel(learning_rate,regularization_factor=0):
     
