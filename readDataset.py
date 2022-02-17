@@ -1,34 +1,37 @@
 import os
 import numpy as np
 import cv2
+from tqdm import tqdm
 
-def readDatasetTraining(path,shuffleMode="shuffleBatches",percentageDataset=0.8,onlyFile=False):
+def readDatasetTraining(path,datasetSize=None,percentageDataset=0.8):
     
-    pictures = readFromFolder(path+"/val_selection_cropped/image",format=(1,352,480,3))
-    trueDepth = readFromFolder(path+"/val_selection_cropped/groundtruth_depth",format=(1,352,480))/256
+    print("Loading training pictures:")
+    pictures = readFromFolder(path+"/val_selection_cropped/image",datasetSize,format=(1,352,480,3),)
+    print("Loading depth data:")
+    trueDepth = readFromFolder(path+"/val_selection_cropped/groundtruth_depth",datasetSize,format=(1,352,480))/256
     
-    splitPercentage = int(len(pictures)*percentageDataset)
+    splitNumber = int(len(pictures)*percentageDataset)
 
-    trainingPictures,trainingTrueDepth = pictures[:splitPercentage,:], trueDepth[:splitPercentage,:]
-    testPictures, testTrueDepth = pictures[splitPercentage:,:], trueDepth[splitPercentage:,:]
+    trainingPictures,trainingTrueDepth = pictures[:splitNumber,:], trueDepth[:splitNumber,:]
+    testPictures, testTrueDepth = pictures[splitNumber:,:], trueDepth[splitNumber:,:]
 
     return trainingPictures,trainingTrueDepth,testPictures,testTrueDepth
 
-def readFromFolder(path,format):
+def readFromFolder(path,datasetSize,format):
     files = os.listdir(path);
     
-    files = files[:400]
+    if datasetSize:
+        files = files[:datasetSize]
         
-    list = np.empty(format)
+    list = []
 
-    for num,file in enumerate(files):
-        print(num)
+    for file in tqdm(files):
         pathToFile = path+"/"+file
         if len(format)==3:
-            list = np.concatenate((list,np.expand_dims(cv2.imread(pathToFile)[:,368:848,0],axis=0)))
+            list.append(cv2.imread(pathToFile)[:,368:848,0])
         else:
-            list = np.concatenate((list,np.expand_dims(cv2.imread(pathToFile)[:,368:848,:],axis=0)))
+            list.append(cv2.imread(pathToFile)[:,368:848,:])
 
     #if shuffling: random.shuffle(pictures)
     
-    return list[1:,:,:]  # Delete first row (random inintialisation of np.empty)
+    return np.stack(list)  # Delete first row (random inintialisation of np.empty)

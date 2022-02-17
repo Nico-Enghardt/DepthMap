@@ -1,26 +1,32 @@
-import os
+import os, sys
 import platform
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import wandb
 import tensorflow as tf
 import numpy as np
 from readDataset import *
-from loss import multiDepthLoss
 import createModelArtifact
+
+#tf.config.run_functions_eagerly(True)
+#tf.data.experimental.enable_debug_mode()
 
 local = False
 if platform.node()=="kubuntu20nico2":
     local = True
 
 modelName = None
-architecture = "to be named"
+architecture = "MayerN"
 max_epochs = 50
-batch_fraction = 1/2
-regularization_factor =  0.5
+batch_fraction = 1
 learning_rate = 0.000001
-percentageDataset = 1;
 
-run = wandb.init(job_type="model-training", config={"learning_rate":learning_rate,"batch_fraction":batch_fraction,"regularization":regularization_factor,"architecture":architecture})
+if len(sys.argv)>1:
+    datasetSize = int(sys.argv[1])
+else:
+    datasetSize = 100
+print(f"Using {datasetSize} picture-depth data-pairs for training and testing.")
+
+run = wandb.init(job_type="model-training", config={"regularization":0,"architecture":architecture})
 
 # Load Model --------------------------------------------------------------------------------------------
 
@@ -32,7 +38,8 @@ if modelName:
     model = tf.keras.models.load_model(model_directory,custom_objects={"multiDepthLoss":multiDepthLoss})
 
 else:
-    model = createModelArtifact.createModel(learning_rate,regularization_factor)
+    modelName = "newModel"
+    model = createModelArtifact.createModel(learning_rate)
 
 # Load and prepare Training Data -------------------------------------------------------------------------------------------------
 
@@ -40,40 +47,33 @@ datasetFolder = "/media/nico/Elements/Kitti Dataset/depth_selection"
 if not local:
     datasetFolder = "/kaggle/input/kitti-depth-estimation-selection/depth_selection"
 
-trainingPictures,trainingTrueDepth,testPictures,testTrueDepth = readDatasetTraining(datasetFolder)
+trainingPictures,trainingTrueDepth,testPictures,testTrueDepth = readDatasetTraining(datasetFolder,datasetSize)
 
-#run.config["trainingExamples"] = trainingLabels.shape[0];
-#run.config["testExamples"] = testLabels.shape[0];
+run.config["trainingExamples"] = trainingPictures.shape[0]
+run.config["testExamples"] = testPictures.shape[0]
 
 # Fit model to training data --------------------------------------------------------------------------------------------
 
 e = 0
-batchSize = int(batch_fraction*trainingPictures.shape[0])
-print(batchSize)
-run.config["batchSize"] = batchSize;
+#batchSize = int(batch_fraction*trainingPictures.shape[0])
+#print(batchSize)
+#run.config["batchSize"] = batchSize;
 
 while e < max_epochs:
     print("Epoch: "+ str(e))
-    model.fit(x=trainingPictures,y=trainingTrueDepth,batch_size=batchSize,verbose=1)
-
-    loss = model.history.history["loss"][0]
-    wandb.log({"loss":loss})
-
-    #if (e % 5 == 0):
-    #     metrics = model.evaluate(x=testPictures,y=testTrueDepth,batch_size=batchSize,verbose=2)
-    #     wandb.log({"testLoss":metrics[0]},commit=False)
+    
+    model.fit(trainingPictures,trainingTrueDepth)
         
     e = e+1
     
-# Test model's predictions
-# predictions = model.predict(testPictures[1,:,:,:])
-# print("\n Predictions:")
-# print(predictions)
-# print("\n")
+#Test model's predictions
+predictions = model.predict(testPictures[1,:,:,:])
+print("\n Predictions:")
+#cv2.imshow("Prediction",predictions[-1,0,:,:,:])
+print(predictions)
+print("\n")
 
 # Save Model online and finish run –------------------------------------------------------------------------------------
-
-modelName = "newModel"
 
 model.save("artifacts/"+modelName)
 
