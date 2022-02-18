@@ -1,8 +1,9 @@
 import os
+from progressbar import progressbar
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 import math
-from tqdm import tqdm
+import tqdm
 
 class depthModel(tf.keras.Model):
     def __init__(self):
@@ -84,6 +85,7 @@ class depthModel(tf.keras.Model):
         depthsPredicted = tf.squeeze(depthsPredicted)
         
         valueMap = tf.where(tf.greater(groundTruth,0),1.,0.)
+        nonZeros = tf.math.count_nonzero(valueMap)
         
         loss = 0
         
@@ -91,23 +93,23 @@ class depthModel(tf.keras.Model):
             abs = tf.abs((groundTruth - depthsPredicted[predSize,:,:,:]))
             
             abs = valueMap*abs
-            
-            abs = tf.reduce_mean(abs,axis=0)
-            abs = tf.reduce_mean(abs,axis=0)
-            loss += tf.reduce_mean(abs,axis=0)
+
+            loss += tf.reduce_sum(abs)
             
             # Mean enthält wahrscheinlich noch die vielen Nullen: tf.reduce_sum… / tf.reduce_sum(valueMap)
 
-        return loss
+        return loss/tf.cast(nonZeros,dtype=tf.float32)/depthsPredicted.shape[0]
 
     def fit(self,x,y,batchSize=None,epochs=1):
         
         if not batchSize:
                 batchSize = len(x)
         
+        progressBar = tqdm.tqdm(total=len(x))
         for epoch in range(epochs):
             
             i = 0
+            
             while i < len(x):
                 area = [i,i+batchSize]
                 if i+batchSize > len(x):
@@ -122,10 +124,14 @@ class depthModel(tf.keras.Model):
                     predictions = self.call(currPictures)
                 
                     loss = self.multiDepthLoss(currDepth,predictions)
+                    progressBar.set_description(desc=f"Loss: {loss.numpy()}",refresh=True)
                     self.history = loss.numpy()
                     
                     grads = tape.gradient(loss,self.trainable_weights)
-                    self.optimizer.apply_gradients(zip(grads,self.trainable_weights))              
+                    self.optimizer.apply_gradients(zip(grads,self.trainable_weights))
+                    
+                progressBar.update(i)
+        progressBar.close()
 
 
 def createModel(learning_rate,regularization_factor=0):

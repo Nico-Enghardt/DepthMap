@@ -17,7 +17,7 @@ if platform.node()=="kubuntu20nico2":
 modelName = None
 architecture = "MayerN"
 max_epochs = 50
-batch_fraction = 0.26
+batch_fraction = 0.105
 learning_rate = 0.000001
 
 if len(sys.argv)>1:
@@ -63,7 +63,6 @@ for e in range(max_epochs):
     print("Epoch: "+ str(e))
     
     model.fit(trainingPictures,trainingTrueDepth,batchSize)
-    print("Loss: " + str(model.history))
     wandb.log({"loss":model.history})
     
 #Test model's predictions
