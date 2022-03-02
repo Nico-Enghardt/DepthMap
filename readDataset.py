@@ -3,7 +3,7 @@ import numpy as np
 import cv2
 from tqdm import tqdm
 
-def readDatasetTraining(path,datasetSize=None,percentageDataset=0.8):
+def readDatasetTraining(path,datasetSize=None,percentageDataset=0.99):
     
     print("Loading training pictures:")
     pictures = readFromFolder(path+"/val_selection_cropped/image",datasetSize,format=(1,352,480,3),)
