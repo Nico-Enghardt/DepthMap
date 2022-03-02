@@ -141,7 +141,7 @@ class depthModel(tf.keras.Model):
         #progressBar.close()
         
         cv2.imwrite("Predictions3.png",predictions[3,0,:,:].numpy())
-        cv2.imwrite("Predictions3.png",predictions[4,0,:,:].numpy())
+        cv2.imwrite("Predictions4.png",predictions[4,0,:,:].numpy())
         cv2.imwrite("GroundTruth.png",y[0,:,:])
 
 def createModel(learningRate,regularization_factor=0):
