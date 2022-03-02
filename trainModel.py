@@ -51,7 +51,9 @@ run.config["testExamples"] = testPictures.shape[0]
 
 # Fit model to training data --------------------------------------------------------------------------------------------
 
-cv2.imwrite("Predictions/GroundTruth.png",trainingTrueDepth[0,:,:])
+nth = 0
+
+cv2.imwrite("Predictions/GroundTruth.png",testTrueDepth[nth,:,:])
 
 wandb.log({"groundTruth":wandb.Image("Predictions/GroundTruth.png")},commit=False)
 
@@ -67,11 +69,11 @@ for e in range(max_epochs):
     model.fit(trainingPictures,trainingTrueDepth,batchSize,epochs=1)
     wandb.log({"loss":model.history})
     
-    if (e%100==0):
+    if (e%50==0):
         
-        predictions = model.call(trainingPictures)
+        predictions = model.predict(testPictures)
         
-        cv2.imwrite("Predictions/Predictions4.png",cv2.resize(predictions[4,0,:,:].numpy(),(480*2,352*2)))
+        cv2.imwrite("Predictions/Predictions4.png",cv2.resize(predictions[4,nth,:,:].numpy(),(480*2,352*2)))
         
         wandb.log({"prediction4":wandb.Image("Predictions/Predictions4.png")},commit=False)
     
