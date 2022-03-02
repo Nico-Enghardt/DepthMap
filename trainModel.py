@@ -14,7 +14,7 @@ if platform.node()=="kubuntu20nico2":
 modelName = None
 architecture = "MayerN"
 max_epochs = 50
-batch_fraction = 0.1
+batch_fraction = 0.2
 learningRate = 0.00013
 
 if len(sys.argv)>1:
