@@ -13,9 +13,9 @@ if platform.node()=="kubuntu20nico2":
 
 modelName = None
 architecture = "MayerN"
-max_epochs = 50
-batch_fraction = 0.2
-learningRate = 0.00013
+max_epochs = 400
+batch_fraction = 0.5
+learningRate = 0.0001
 
 if len(sys.argv)>1:
     datasetSize = int(sys.argv[1])
@@ -51,6 +51,12 @@ run.config["testExamples"] = testPictures.shape[0]
 
 # Fit model to training data --------------------------------------------------------------------------------------------
 
+cv2.imwrite("Predictions/GroundTruth.png",trainingTrueDepth[0,:,:])
+
+wandb.log({"groundTruth":wandb.Image("Predictions/GroundTruth.png")},commit=False)
+
+
+
 batchSize = int(batch_fraction*trainingPictures.shape[0])
 print(f"Using batchsize: {batchSize}")
 run.config["batchSize"] = batchSize;
@@ -58,12 +64,16 @@ run.config["batchSize"] = batchSize;
 for e in range(max_epochs):
     print("Epoch: "+ str(e))
     
-    #print(f"Predictor: {model.weights[12].numpy()[:,:,1,0]}")
-    #print(f"Upconvoluter: {model.weights[20].numpy()[:,:,1,0]}")
-    #print(f"Reconvoluter: {model.weights[28].numpy()[:,:,1,0]}")
-    
-    model.fit(trainingPictures,trainingTrueDepth,batchSize,epochs=3)
+    model.fit(trainingPictures,trainingTrueDepth,batchSize,epochs=1)
     wandb.log({"loss":model.history})
+    
+    if (e%100==0):
+        
+        predictions = model.call(trainingPictures)
+        
+        cv2.imwrite("Predictions/Predictions4.png",cv2.resize(predictions[4,0,:,:].numpy(),(480*2,352*2)))
+        
+        wandb.log({"prediction4":wandb.Image("Predictions/Predictions4.png")},commit=False)
     
     
 #Test model's predictions

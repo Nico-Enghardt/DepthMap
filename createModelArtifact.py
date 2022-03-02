@@ -1,10 +1,11 @@
 import os
 from progressbar import progressbar
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 import tensorflow as tf
-import math
-import tqdm
-import cv2
+import numpy as np
+
+import math, tqdm, cv2
 
 class depthModel(tf.keras.Model):
     def __init__(self):
@@ -109,10 +110,11 @@ class depthModel(tf.keras.Model):
                 
     
         
-        #progressBar = tqdm.tqdm(total=len(x))
+        progressBar = tqdm.tqdm(total=len(x)*epochs)
         for epoch in range(epochs):
             
             i = 0
+            losses = []
             
             while i < len(x):
                 area = [i,i+batchSize]
@@ -130,19 +132,20 @@ class depthModel(tf.keras.Model):
                     
                 
                     loss = self.multiDepthLoss(currDepth,predictions)
-                    print(f"Loss: {loss}")
-                    #progressBar.set_description(desc=f"Loss: {loss.numpy()}",refresh=True)
-                    self.history = loss.numpy()
+                    losses.append(loss.numpy())
+                    
+                    
                     
                     grads = tape.gradient(loss,self.trainable_weights)
                     self.optimizer.apply_gradients(zip(grads,self.trainable_weights))
                     
-                #progressBar.update(i)
-        #progressBar.close()
+                progressBar.update(i)
+            
+            self.history = np.mean(losses)
+            
+            progressBar.set_description(desc=f"Loss: {self.history}",refresh=True)
+        progressBar.close()
         
-        cv2.imwrite("Predictions3.png",predictions[3,0,:,:].numpy())
-        cv2.imwrite("Predictions4.png",predictions[4,0,:,:].numpy())
-        cv2.imwrite("GroundTruth.png",y[0,:,:])
 
 def createModel(learningRate,regularization_factor=0):
     
