@@ -8,7 +8,7 @@ def readDatasetTraining(path,datasetSize=None,percentageDataset=0.8):
     print("Loading training pictures:")
     pictures = readFromFolder(path+"/val_selection_cropped/image",datasetSize,format=(1,352,480,3),)
     print("Loading depth data:")
-    trueDepth = readFromFolder(path+"/val_selection_cropped/groundtruth_depth",datasetSize,format=(1,352,480))/256
+    trueDepth = readFromFolder(path+"/val_selection_cropped/groundtruth_depth",datasetSize,format=(1,352,480))
     
     splitNumber = int(len(pictures)*percentageDataset)
 

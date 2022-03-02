@@ -7,9 +7,6 @@ import numpy as np
 from readDataset import *
 import createModelArtifact
 
-#tf.config.run_functions_eagerly(True)
-#tf.data.experimental.enable_debug_mode()
-
 local = False
 if platform.node()=="kubuntu20nico2":
     local = True
@@ -17,8 +14,8 @@ if platform.node()=="kubuntu20nico2":
 modelName = None
 architecture = "MayerN"
 max_epochs = 50
-batch_fraction = 0.105
-learning_rate = 0.000001
+batch_fraction = 1
+learningRate = 0.00013
 
 if len(sys.argv)>1:
     datasetSize = int(sys.argv[1])
@@ -26,7 +23,7 @@ else:
     datasetSize = 100
 print(f"Using {datasetSize} picture-depth data-pairs for training and testing.")
 
-run = wandb.init(job_type="model-training", config={"regularization":0,"architecture":architecture})
+run = wandb.init(job_type="model-training", config={"regularization":0,"architecture":architecture,"learningRate":0.00013})
 
 # Load Model --------------------------------------------------------------------------------------------
 
@@ -35,11 +32,11 @@ if modelName:
     modelArtifact = run.use_artifact(modelName+":latest")
     model_directory = modelArtifact.download()
 
-    model = tf.keras.models.load_model(model_directory,custom_objects={"multiDepthLoss":multiDepthLoss})
+    #model = tf.keras.models.load_model(model_directory,custom_objects={"multiDepthLoss":multiDepthLoss})
 
 else:
     modelName = "newModel"
-    model = createModelArtifact.createModel(learning_rate)
+    model = createModelArtifact.createModel(learningRate)
 
 # Load and prepare Training Data -------------------------------------------------------------------------------------------------
 
@@ -54,16 +51,20 @@ run.config["testExamples"] = testPictures.shape[0]
 
 # Fit model to training data --------------------------------------------------------------------------------------------
 
-
-batchSize = int(batch_fraction*trainingPictures.shape[0]*0.8)
+batchSize = int(batch_fraction*trainingPictures.shape[0])
 print(f"Using batchsize: {batchSize}")
 run.config["batchSize"] = batchSize;
 
 for e in range(max_epochs):
     print("Epoch: "+ str(e))
     
-    model.fit(trainingPictures,trainingTrueDepth,batchSize)
+    #print(f"Predictor: {model.weights[12].numpy()[:,:,1,0]}")
+    #print(f"Upconvoluter: {model.weights[20].numpy()[:,:,1,0]}")
+    #print(f"Reconvoluter: {model.weights[28].numpy()[:,:,1,0]}")
+    
+    model.fit(trainingPictures,trainingTrueDepth,batchSize,epochs=3)
     wandb.log({"loss":model.history})
+    
     
 #Test model's predictions
 predictions = model.predict(testPictures[1,:,:,:])

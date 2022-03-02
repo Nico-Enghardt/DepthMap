@@ -4,6 +4,7 @@ os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
 import tensorflow as tf
 import math
 import tqdm
+import cv2
 
 class depthModel(tf.keras.Model):
     def __init__(self):
@@ -25,19 +26,19 @@ class depthModel(tf.keras.Model):
         for i, size in enumerate(encoderKernels):
             channels = minChannels*int(math.pow(2,i))
         
-            self.encoders.append(tf.keras.layers.Conv2D(channels,(size, size), activation='relu',strides=2,padding="same",name=f"Encoder #{i}"))
+            self.encoders.append(tf.keras.layers.Conv2D(channels,(size, size), activation='relu',strides=2,padding="same",name=f"Encoder-{i}"))
            
         # Layers in between 
-        self.predictors.append(tf.keras.layers.Conv2D(1, decoderKernels[2], activation='relu',padding="same",name="Predictor #0"))
+        self.predictors.append(tf.keras.layers.Conv2D(1, decoderKernels[2], activation='relu',padding="same",name="Predictor-0"))
         
         # The decoding layers
         for i in range(steps-1,0,-1):
             # Set channels down
             channels /= 2
             
-            self.upconvoluters.append(tf.keras.layers.Conv2DTranspose(channels, decoderKernels[0], strides=2,activation='relu',padding="same",name=f"Upconvoluter #{i-steps+1}"))
-            self.reconvoluters.append(tf.keras.layers.Conv2D(channels, decoderKernels[1], activation='relu',padding="same",name=f"Reconvoluter #{i-steps+1}"))
-            self.predictors.append(tf.keras.layers.Conv2D(1, decoderKernels[2], activation='relu',padding="same",name=f"Predictor #{i-steps+1}"))
+            self.upconvoluters.append(tf.keras.layers.Conv2DTranspose(channels, decoderKernels[0], strides=2,activation='relu',padding="same",name=f"Upconvoluter-{i-steps+1}"))
+            self.reconvoluters.append(tf.keras.layers.Conv2D(channels, decoderKernels[1], activation='relu',padding="same",name=f"ReConvoluter-{i-steps+1}"))
+            self.predictors.append(tf.keras.layers.Conv2D(1, decoderKernels[2], activation='relu',padding="same",name=f"Predictor-{i-steps+2}"))
     
     def call(self,inputs):
         predictions = []
@@ -45,10 +46,9 @@ class depthModel(tf.keras.Model):
         
         inputs = tf.cast(inputs,tf.float16)
         
-        x = self.encoders[0](inputs)
-        convResults.append(x)
+        x = inputs
         
-        for encodingLayer in self.encoders[1:]:
+        for encodingLayer in self.encoders:
             x = encodingLayer(x)
             convResults.append(x)
             
@@ -84,6 +84,8 @@ class depthModel(tf.keras.Model):
         
         depthsPredicted = tf.squeeze(depthsPredicted)
         
+        print(f"depthsPredicted: {depthsPredicted[3,0,190:193,200:203].numpy()}")
+        
         valueMap = tf.where(tf.greater(groundTruth,0),1.,0.)
         nonZeros = tf.math.count_nonzero(valueMap)
         
@@ -104,8 +106,10 @@ class depthModel(tf.keras.Model):
         
         if not batchSize:
                 batchSize = len(x)
+                
+    
         
-        progressBar = tqdm.tqdm(total=len(x))
+        #progressBar = tqdm.tqdm(total=len(x))
         for epoch in range(epochs):
             
             i = 0
@@ -122,24 +126,31 @@ class depthModel(tf.keras.Model):
                 with tf.GradientTape() as tape:
                 
                     predictions = self.call(currPictures)
+                    
+                    
                 
                     loss = self.multiDepthLoss(currDepth,predictions)
-                    progressBar.set_description(desc=f"Loss: {loss.numpy()}",refresh=True)
+                    print(f"Loss: {loss}")
+                    #progressBar.set_description(desc=f"Loss: {loss.numpy()}",refresh=True)
                     self.history = loss.numpy()
                     
                     grads = tape.gradient(loss,self.trainable_weights)
                     self.optimizer.apply_gradients(zip(grads,self.trainable_weights))
                     
-                progressBar.update(i)
-        progressBar.close()
+                #progressBar.update(i)
+        #progressBar.close()
+        
+        cv2.imwrite("Predictions.png",predictions[3,0,:,:].numpy())
+        cv2.imwrite("GroundTruth.png",y[0,:,:])
 
-
-def createModel(learning_rate,regularization_factor=0):
+def createModel(learningRate,regularization_factor=0):
     
     model = depthModel()
     model.compile(
-        optimizer = tf.keras.optimizers.Adam(),
+        optimizer = tf.keras.optimizers.SGD(learningRate),
         loss = model.multiDepthLoss
     )
+    model.build((None,352,480,3))
+    model.summary()
     
     return model
