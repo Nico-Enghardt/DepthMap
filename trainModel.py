@@ -73,7 +73,7 @@ for e in range(max_epochs):
         
         predictions = model.predict(testPictures)
         
-        cv2.imwrite("Predictions/Predictions4.png",cv2.resize(predictions[4,nth,:,:].numpy(),(480*2,352*2)))
+        cv2.imwrite("Predictions/Predictions4.png",cv2.resize(predictions[4,nth,:,:],(480*2,352*2)))
         
         wandb.log({"prediction4":wandb.Image("Predictions/Predictions4.png")},commit=False)
     
