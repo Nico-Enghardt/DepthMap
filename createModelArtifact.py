@@ -8,8 +8,8 @@ import numpy as np
 import math, tqdm, cv2
 
 class depthModel(tf.keras.Model):
-    def __init__(self):
-        super(depthModel, self).__init__()
+    def __init__(self,modelName):
+        super(depthModel, self).__init__(name=modelName)
         
         encoderKernels = [7,7,5,3,3]
         steps = len(encoderKernels)
@@ -84,9 +84,7 @@ class depthModel(tf.keras.Model):
     def multiDepthLoss(self,groundTruth,depthsPredicted):
         
         depthsPredicted = tf.squeeze(depthsPredicted)
-        
-        print(f"depthsPredicted: {depthsPredicted[3,0,190:193,200:203].numpy()}")
-        
+                
         valueMap = tf.where(tf.greater(groundTruth,0),1.,0.)
         nonZeros = tf.math.count_nonzero(valueMap)
         
@@ -149,7 +147,9 @@ class depthModel(tf.keras.Model):
 
 def createModel(learningRate,regularization_factor=0):
     
-    model = depthModel()
+    modelName = input("What shall be the new model's name? Type here:  ")
+    
+    model = depthModel(modelName)
     model.compile(
         optimizer = tf.keras.optimizers.SGD(learningRate),
         loss = model.multiDepthLoss

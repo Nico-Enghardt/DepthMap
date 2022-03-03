@@ -13,14 +13,14 @@ if platform.node()=="kubuntu20nico2":
 
 modelName = None
 architecture = "MayerN"
-max_epochs = 400
-batch_fraction = 0.2
-learningRate = 0.0001
+max_epochs = 3
+batch_fraction = 0.21
+learningRate = 0.0004
 
-if len(sys.argv)>1:
-    datasetSize = int(sys.argv[1])
-else:
+datasetSize = 1000
+if local:
     datasetSize = 100
+
 print(f"Using {datasetSize} picture-depth data-pairs for training and testing.")
 
 run = wandb.init(job_type="model-training", config={"regularization":0,"architecture":architecture,"learningRate":0.00013})
@@ -57,8 +57,6 @@ cv2.imwrite("Predictions/GroundTruth.png",testTrueDepth[nth,:,:])
 
 wandb.log({"groundTruth":wandb.Image("Predictions/GroundTruth.png")},commit=False)
 
-
-
 batchSize = int(batch_fraction*trainingPictures.shape[0])
 print(f"Using batchsize: {batchSize}")
 run.config["batchSize"] = batchSize;
@@ -69,6 +67,11 @@ for e in range(max_epochs):
     model.fit(trainingPictures,trainingTrueDepth,batchSize,epochs=1)
     wandb.log({"loss":model.history})
     
+    if (e%10==5):
+        predictions = model.predict(testPictures)
+        
+        print(f"Current Predictions: {predictions[4,0,190:195,200]}")
+    
     if (e%50==0):
         
         predictions = model.predict(testPictures)
@@ -77,22 +80,20 @@ for e in range(max_epochs):
         
         wandb.log({"prediction4":wandb.Image("Predictions/Predictions4.png")},commit=False)
     
-    
-#Test model's predictions
-predictions = model.predict(testPictures[1,:,:,:])
-print("\n Predictions:")
-#cv2.imshow("Prediction",predictions[-1,0,:,:,:])
-print(predictions)
-print("\n")
 
 # Save Model online and finish run –------------------------------------------------------------------------------------
 
-model.save("artifacts/"+modelName)
+model.save("artifacts/"+model.name)
 
-modelArtifact = wandb.Artifact(modelName,type="model")
-modelArtifact.add_dir("artifacts/"+modelName)
+modelArtifact = wandb.Artifact(model.name,type="model")
+modelArtifact.add_dir("artifacts/"+model.name)
 
 run.log_artifact(modelArtifact)
+
+#Test model's predictions
+evalLoss = model.evaluate(testPictures)
+print(f"\n Loss on testSet: {evalLoss}")
+wandb.log({"evalLoss":evalLoss})
 
 wandb.finish()
 
