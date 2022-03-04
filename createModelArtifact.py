@@ -7,6 +7,26 @@ import numpy as np
 
 import math, tqdm, cv2
 
+def multiDepthLoss(groundTruth,depthsPredicted):
+        
+        depthsPredicted = tf.squeeze(depthsPredicted)
+                
+        valueMap = tf.where(tf.greater(groundTruth,0),1.,0.)
+        nonZeros = tf.math.count_nonzero(valueMap)
+        
+        loss = 0
+        
+        for predSize in range(depthsPredicted.shape[0]):
+            abs = tf.abs((groundTruth - depthsPredicted[predSize,:,:,:]))
+            
+            abs = valueMap*abs
+
+            loss += tf.reduce_sum(abs)
+            
+            # Mean enthält wahrscheinlich noch die vielen Nullen: tf.reduce_sum… / tf.reduce_sum(valueMap)
+
+        return loss/tf.cast(nonZeros,dtype=tf.float32)/depthsPredicted.shape[0]
+
 class depthModel(tf.keras.Model):
     def __init__(self,modelName):
         super(depthModel, self).__init__(name=modelName)
@@ -70,18 +90,8 @@ class depthModel(tf.keras.Model):
         predictions = self.scalePredictions(predictions)
         
         return predictions
-        
-    def scalePredictions(self,predictions,imSize=(352,480)):
-    
-        all = []
 
-        for pred in predictions: 
-            
-            all.append(tf.image.resize(pred,imSize))
-            
-        return tf.stack(all)    
-
-    def multiDepthLoss(self,groundTruth,depthsPredicted):
+    def loss(self,groundTruth,depthsPredicted):
         
         depthsPredicted = tf.squeeze(depthsPredicted)
                 
@@ -101,13 +111,21 @@ class depthModel(tf.keras.Model):
 
         return loss/tf.cast(nonZeros,dtype=tf.float32)/depthsPredicted.shape[0]
 
+    def scalePredictions(self,predictions,imSize=(352,480)):
+    
+        all = []
+
+        for pred in predictions: 
+            
+            all.append(tf.image.resize(pred,imSize))
+            
+        return tf.stack(all)    
+
     def fit(self,x,y,batchSize=None,epochs=1):
         
         if not batchSize:
                 batchSize = len(x)
                 
-    
-        
         progressBar = tqdm.tqdm(total=len(x)*epochs)
         for epoch in range(epochs):
             
@@ -129,7 +147,7 @@ class depthModel(tf.keras.Model):
                     
                     
                 
-                    loss = self.multiDepthLoss(currDepth,predictions)
+                    loss = self.loss(currDepth,predictions)
                     losses.append(loss.numpy())
                     
                     
@@ -152,7 +170,7 @@ def createModel(learningRate,regularization_factor=0):
     model = depthModel(modelName)
     model.compile(
         optimizer = tf.keras.optimizers.SGD(learningRate),
-        loss = model.multiDepthLoss
+        loss = model.loss
     )
     model.build((None,352,480,3))
     model.summary()

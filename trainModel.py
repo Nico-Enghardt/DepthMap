@@ -1,17 +1,20 @@
 import os, sys
 import platform
 os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+
 import wandb
 import tensorflow as tf
 import numpy as np
+
 from readDataset import *
+import visualizeDepth
 import createModelArtifact
 
 local = False
 if platform.node()=="kubuntu20nico2":
     local = True
 
-modelName = None
+modelName = "Dostojewski"
 architecture = "MayerN"
 max_epochs = 3
 batch_fraction = 0.21
@@ -19,11 +22,11 @@ learningRate = 0.0004
 
 datasetSize = 1000
 if local:
-    datasetSize = 100
+    datasetSize = 20
 
 print(f"Using {datasetSize} picture-depth data-pairs for training and testing.")
 
-run = wandb.init(job_type="model-training", config={"regularization":0,"architecture":architecture,"learningRate":0.00013})
+run = wandb.init(job_type="model-training", config={"regularization":0,"architecture":architecture,"learningRate":learningRate,"datasetType":"simple"})
 
 # Load Model --------------------------------------------------------------------------------------------
 
@@ -32,7 +35,7 @@ if modelName:
     modelArtifact = run.use_artifact(modelName+":latest")
     model_directory = modelArtifact.download()
 
-    #model = tf.keras.models.load_model(model_directory,custom_objects={"multiDepthLoss":multiDepthLoss})
+    model = tf.keras.models.load_model(model_directory,custom_objects={"depthModel":createModelArtifact.depthModel})
 
 else:
     modelName = "newModel"
@@ -54,8 +57,10 @@ run.config["testExamples"] = testPictures.shape[0]
 nth = 0
 
 cv2.imwrite("Predictions/GroundTruth.png",testTrueDepth[nth,:,:])
+cv2.imwrite("Predictions/original.png",testPictures[nth,:,:])
 
 wandb.log({"groundTruth":wandb.Image("Predictions/GroundTruth.png")},commit=False)
+wandb.log({"original":wandb.Image("Predictions/original.png")},commit=False)
 
 batchSize = int(batch_fraction*trainingPictures.shape[0])
 print(f"Using batchsize: {batchSize}")
@@ -70,13 +75,15 @@ for e in range(max_epochs):
     if (e%10==5):
         predictions = model.predict(testPictures)
         
-        print(f"Current Predictions: {predictions[4,0,190:195,200]}")
+        print(f"Current Predictions: {predictions[4,0,190:195,200].squeeze()}")
     
     if (e%50==0):
         
         predictions = model.predict(testPictures)
         
-        cv2.imwrite("Predictions/Predictions4.png",cv2.resize(predictions[4,nth,:,:],(480*2,352*2)))
+        visualizer = visualizeDepth.rawToColorful(testPictures[nth,:,:,:],predictions[4,nth,:,:])
+        
+        cv2.imwrite("Predictions/Predictions4.png",cv2.resize(visualizer,(480*2,352*2)))
         
         wandb.log({"prediction4":wandb.Image("Predictions/Predictions4.png")},commit=False)
     
