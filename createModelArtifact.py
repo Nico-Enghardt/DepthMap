@@ -7,25 +7,7 @@ import numpy as np
 
 import math, tqdm, cv2
 
-def multiDepthLoss(groundTruth,depthsPredicted):
-        
-        depthsPredicted = tf.squeeze(depthsPredicted)
-                
-        valueMap = tf.where(tf.greater(groundTruth,0),1.,0.)
-        nonZeros = tf.math.count_nonzero(valueMap)
-        
-        loss = 0
-        
-        for predSize in range(depthsPredicted.shape[0]):
-            abs = tf.abs((groundTruth - depthsPredicted[predSize,:,:,:]))
-            
-            abs = valueMap*abs
-
-            loss += tf.reduce_sum(abs)
-            
-            # Mean enthält wahrscheinlich noch die vielen Nullen: tf.reduce_sum… / tf.reduce_sum(valueMap)
-
-        return loss/tf.cast(nonZeros,dtype=tf.float32)/depthsPredicted.shape[0]
+from loss import multiDepthLoss
 
 class depthModel(tf.keras.Model):
     def __init__(self,modelName):
@@ -61,6 +43,26 @@ class depthModel(tf.keras.Model):
             self.reconvoluters.append(tf.keras.layers.Conv2D(channels, decoderKernels[1], activation='relu',padding="same",name=f"ReConvoluter-{i-steps+1}"))
             self.predictors.append(tf.keras.layers.Conv2D(1, decoderKernels[2], activation='relu',padding="same",name=f"Predictor-{i-steps+2}"))
     
+    def loss(self,groundTruth,depthsPredicted):
+        
+        depthsPredicted = tf.squeeze(depthsPredicted)
+                
+        valueMap = tf.where(tf.greater(groundTruth,0),1.,0.)
+        nonZeros = tf.math.count_nonzero(valueMap)
+        
+        loss = 0
+        
+        for predSize in range(depthsPredicted.shape[0]):
+            abs = tf.abs((groundTruth - depthsPredicted[predSize,:,:,:]))
+            
+            abs = valueMap*abs
+
+            loss += tf.reduce_sum(abs)
+            
+            # Mean enthält wahrscheinlich noch die vielen Nullen: tf.reduce_sum… / tf.reduce_sum(valueMap)
+
+        return loss/tf.cast(nonZeros,dtype=tf.float32)/depthsPredicted.shape[0]
+    
     def call(self,inputs):
         predictions = []
         convResults = [] # For saving the outputs of the encoding convolutional layers, outputs are needed for concatenation in corresponding later layer.
@@ -90,26 +92,6 @@ class depthModel(tf.keras.Model):
         predictions = self.scalePredictions(predictions)
         
         return predictions
-
-    def loss(self,groundTruth,depthsPredicted):
-        
-        depthsPredicted = tf.squeeze(depthsPredicted)
-                
-        valueMap = tf.where(tf.greater(groundTruth,0),1.,0.)
-        nonZeros = tf.math.count_nonzero(valueMap)
-        
-        loss = 0
-        
-        for predSize in range(depthsPredicted.shape[0]):
-            abs = tf.abs((groundTruth - depthsPredicted[predSize,:,:,:]))
-            
-            abs = valueMap*abs
-
-            loss += tf.reduce_sum(abs)
-            
-            # Mean enthält wahrscheinlich noch die vielen Nullen: tf.reduce_sum… / tf.reduce_sum(valueMap)
-
-        return loss/tf.cast(nonZeros,dtype=tf.float32)/depthsPredicted.shape[0]
 
     def scalePredictions(self,predictions,imSize=(352,480)):
     
@@ -144,13 +126,9 @@ class depthModel(tf.keras.Model):
                 with tf.GradientTape() as tape:
                 
                     predictions = self.call(currPictures)
-                    
-                    
-                
-                    loss = self.loss(currDepth,predictions)
+                                 
+                    loss = multiDepthLoss(currDepth,predictions)
                     losses.append(loss.numpy())
-                    
-                    
                     
                     grads = tape.gradient(loss,self.trainable_weights)
                     self.optimizer.apply_gradients(zip(grads,self.trainable_weights))
@@ -169,8 +147,7 @@ def createModel(learningRate,regularization_factor=0):
     
     model = depthModel(modelName)
     model.compile(
-        optimizer = tf.keras.optimizers.SGD(learningRate),
-        loss = model.loss
+        optimizer = tf.keras.optimizers.SGD(learningRate)
     )
     model.build((None,352,480,3))
     model.summary()

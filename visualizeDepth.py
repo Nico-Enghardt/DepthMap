@@ -11,8 +11,7 @@ def rawToColorful(original,depthMap):
     originalHSV[:,:,1] = np.ones(hue.shape)*255
 
     ansicht = cv2.cvtColor(originalHSV,cv2.COLOR_HSV2BGR)
-
-
+    
     return ansicht
 
 if __name__ == '__main__':

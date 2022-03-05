@@ -7,8 +7,7 @@ import tensorflow as tf
 import numpy as np
 
 from readDataset import *
-import visualizeDepth
-import createModelArtifact
+import visualizeDepth, createModelArtifact, loss
 
 local = False
 if platform.node()=="kubuntu20nico2":
@@ -16,7 +15,7 @@ if platform.node()=="kubuntu20nico2":
 
 modelName = "Dostojewski"
 architecture = "MayerN"
-max_epochs = 3
+max_epochs = 20
 batch_fraction = 0.21
 learningRate = 0.0004
 
@@ -35,10 +34,11 @@ if modelName:
     modelArtifact = run.use_artifact(modelName+":latest")
     model_directory = modelArtifact.download()
 
-    model = tf.keras.models.load_model(model_directory,custom_objects={"depthModel":createModelArtifact.depthModel})
+    model = tf.keras.models.load_model(model_directory,custom_objects={"multiDepthLoss":loss.multiDepthLoss},compile=False)
+    
+    model.compile(tf.keras.optimizers.Adam())
 
 else:
-    modelName = "newModel"
     model = createModelArtifact.createModel(learningRate)
 
 # Load and prepare Training Data -------------------------------------------------------------------------------------------------
