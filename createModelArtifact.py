@@ -23,8 +23,7 @@ class depthModel(tf.keras.Model):
         self.upconvoluters = []
         self.reconvoluters = []
         self.upsamplingLayer = tf.keras.layers.UpSampling2D(size=(2,2))
-        
-        
+    
         # The encoding layers
         for i, size in enumerate(encoderKernels):
             channels = minChannels*int(math.pow(2,i))
@@ -89,11 +88,11 @@ class depthModel(tf.keras.Model):
             
             predictions.append(predictor(x))
             
-        predictions = self.scalePredictions(predictions)
+        predictions = self.scalePredictions(predictions,inputs.shape[1:3])
         
         return predictions
 
-    def scalePredictions(self,predictions,imSize=(352,480)):
+    def scalePredictions(self,predictions,imSize):
     
         all = []
 
@@ -103,8 +102,8 @@ class depthModel(tf.keras.Model):
             
         return tf.stack(all)    
 
-    def fit(self,x,y,batchSize=None,epochs=1):
-        
+    def fit(self,x,y,batchSize=None,epochs=1,reloaded=False):
+                
         if not batchSize:
                 batchSize = len(x)
                 
@@ -139,15 +138,14 @@ class depthModel(tf.keras.Model):
             
             progressBar.set_description(desc=f"Loss: {self.history}",refresh=True)
         progressBar.close()
-        
 
-def createModel(learningRate,regularization_factor=0):
+def createModel():
     
     modelName = input("What shall be the new model's name? Type here:  ")
     
     model = depthModel(modelName)
     model.compile(
-        optimizer = tf.keras.optimizers.SGD(learningRate)
+        optimizer = tf.keras.optimizers.Adam()
     )
     model.build((None,352,480,3))
     model.summary()
